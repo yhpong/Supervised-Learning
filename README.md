@@ -2,7 +2,7 @@
 
 ## Single layer feed forward neural network
 
-Requires: [cANN.cls](Modules/cANN.cls), [modMath.bas](../../Scientific-Toolkit/blob/master/Modules/modMath.bas)
+Requires: [cANN.cls](Modules/cANN.cls), [modMath.bas](../../../Scientific-Toolkit/blob/master/Modules/modMath.bas)
 
 ![ANN1](ANN1.jpg)
 
