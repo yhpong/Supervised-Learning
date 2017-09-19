@@ -4,7 +4,9 @@
 
 ![ANN1](ANN1.jpg)
 
-We will once again use the wine data set as an example. First read in data as an array of *x(1:N,1:D)* where N=178 and D=13 are the number of sample and dimensions respectivly. *x_class(1:N)* holds the class label of each sample.
+Test data here is wine data set from [UCI Machine Learning Repository](https://archive.ics.uci.edu/ml/datasets.html)<sup>1</sup>. It consists of 178 samples of wines made from three different cultivars, which will be named as classes 1, 2 and 3 in the following sections. 13 attributes of these wine samples were measured. Data is read in as an array of *x(1:N,1:D)* where N=178 and D=13 are the number of samples and dimensions respectivly. *x_class(1:N)* holds the class label of each sample.
+
+1. Forina, M. et al. [UCI Machine Learning Repository](http://archive.ics.uci.edu/ml). Institute of Pharmaceutical and Food Analysis and Technologies. 
 
 ### 1. Prep the data
 
