@@ -27,7 +27,7 @@ Remember that the data you get may have been sorted in some way. In this case th
     iTrain = modMath.index_array(1, n_raw)  'generate pointers 1 to N for each data
     Call modMath.Shuffle(iTrain) 'Shuffle the pointers
 ```
-Now split the set into training/validation/test set by the portion of 70/30/78.
+Now split the set into training/validation/test set by portion of 70/30/78.
 
 ```
     Call modMath.MidArray(iTrain, 71, 100, iValid)  'pointer to validation set
@@ -38,20 +38,14 @@ Now split the set into training/validation/test set by the portion of 70/30/78.
     Call modMath.Filter_Array(x, x_train, iTrain)
     Call modMath.Filter_Array(x_class, x_class_train, iTrain)
     Call modMath.Filter_Array(x_class_vec, x_class_vec_train, iTrain)
-
-    Call modMath.Filter_Array(x, x_valid, iValid)
-    Call modMath.Filter_Array(x_class, x_class_valid, iValid)
-    Call modMath.Filter_Array(x_class_vec, x_class_vec_valid, iValid)
     
-    Call modMath.Filter_Array(x, x_test, iTest)
-    Call modMath.Filter_Array(x_class, x_class_test, iTest)
-    Call modMath.Filter_Array(x_class_vec, x_class_vec_test, iTest)
+    '...repeat for validation and test set
 ```
 
 ### 3. Train neural network
-Now we can feed the training and validation set into our single later feed forward ANN. We will set the number of hidden units to 13 in this example. Figure on the above left shows the architecture of this network. Activation functions are hard coded to be sigmoid and softmax in the hidden and output layers.
+Now we can feed the training and validation set into our ANN. We will set the number of hidden units to 13 in this example. Figure on the above left shows the architecture of this network. Activation functions are hard coded to be sigmoid and softmax in the hidden and output layer respectively.
 
-Syntax to initialie and train the network is as below:
+Syntax to initialize and train the network is as below:
 ```  
   Dim ANN1 As New cANN
   With ANN1
