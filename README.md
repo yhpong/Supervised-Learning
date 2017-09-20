@@ -4,7 +4,7 @@
 
 Requires: [cANN.cls](Modules/cANN.cls), [modMath.bas](../../../Scientific-Toolkit/blob/master/Modules/modMath.bas)
 
-![ANN1](ANN1.jpg)
+![ANN1](Screenshots/ANN1.jpg)
 
 Test data here is wine data set from [UCI Machine Learning Repository](https://archive.ics.uci.edu/ml/datasets.html)<sup>1</sup>. It consists of 178 samples of wines made from three different cultivars, which will be named as classes 1, 2 and 3 in the following sections. 13 attributes of these wine samples were measured. Data is read in as an array of *x(1:N,1:D)* where N=178 and D=13 are the number of samples and dimensions respectivly. *x_class(1:N)* holds the class label of each sample.
 
@@ -64,7 +64,7 @@ Now we are ready to test the model on the training set
 ```
 The two charts below show the accuracy of our trained network. Accuracy on traing set is 100%. On the test set, it makes one incorrect prediction, it misclassifies a class2 sample as class3.
 
-![ANN2](ANN2.jpg)
+![ANN2](Screenshots/ANN2.jpg)
 
 ### 4. Save trained network
 The trained network weights can be print to an Excel worksheet with
