@@ -21,7 +21,7 @@ Before we start, first normalize data x() and use `modmath.Class2Vec` to convert
 
 ### 2. Split the data into training, validation and test set
 
-Remember that the data you get may have been sorted in some way. In this case the data from UCI is sorted by class label. If you directly split the data in half you will end up with samples bias to a certain class. So it's a good ida to shuffle the dataset first.
+Remember that the data you get may have been sorted in some way. In this case the data from UCI is sorted by class label. If you directly split the data in half you will end up with samples bias to a certain class. So it's a good idea to shuffle the dataset first.
 
 ```
     iTrain = modMath.index_array(1, n_raw)  'generate pointers 1 to N for each data
@@ -43,7 +43,7 @@ Now split the set into training/validation/test set by portion of 70/30/78.
 ```
 
 ### 3. Train neural network
-Now we can feed the training and validation set into our ANN. We will set the number of hidden units to 13 in this example. Figure on the above left shows the architecture of this network. Activation functions are hard coded to be sigmoid and softmax in the hidden and output layer respectively.
+Now we can feed the training and validation sets into our ANN. We will set the number of hidden units to 13 in this example. Figure on the above left shows the architecture of this network. Activation functions are hard coded to be sigmoid and softmax in the hidden and output layer respectively.
 
 Syntax to initialize and train the network is as below:
 ```  
@@ -55,7 +55,7 @@ Syntax to initialize and train the network is as below:
   End With
 ```
 
-The cost function at every epoch can is pulled out and shown on the upper right figure. Note how the cost function continued to drop in the training set after about 600 epochs but stop dropping in the validation set. This could be a sign of overfitting, which is why we want to have a validation set to make sure we know when to stop training.
+The cost function at every epoch can is pulled out and shown on the upper right figure. Note how the cost function continued to drop in the training set after about 600 epochs but stop improving in the validation set. This could be a sign of overfitting, which is why we want to have a validation set to make sure we know when to stop training.
 
 Now we are ready to test the model on the training set
 ```      
@@ -67,7 +67,7 @@ The two charts below show the accuracy of our trained network. Accuracy on train
 ![ANN2](Screenshots/ANN2.jpg)
 
 ### 4. Save trained network
-The trained network weights can be print to an Excel worksheet with
+The trained network weights can be printed to an Excel worksheet with
 ```
 Call ANN1.Print_Model(wksht)
 ```
