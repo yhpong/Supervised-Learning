@@ -77,3 +77,13 @@ which can be reused next time by the read command
 Call ANN1.Read_Model(wksht)
 ```
 
+## Commonly used loss function and activation function at the output layer
+Here are some commonly used functions and their respective derivatives and deltas listed for easy reference. *t<sub>i</sub>* is the target output at node *i*, *y<sub>i</sub>* and *x<sub>i</sub>* are the output and input to node *i*.
+
+![Eq1](Screenshots/BackProp_Eq1.jpg)
+
+To calculate gradient of the loss function with respect to weights at the *k*-th layer, we backpropagate the gradient using:
+
+![Eq2](Screenshots/BackProp_Eq2.jpg)
+
+To put in words, gradient of weight *w<sub>ji</sub>* is equal to its input multiplied by the delta at the exiting node. And delta at node *i* of the *k*-th layer is given by weighted sum of deltas from connected nodes in the next layer, modulated by its own gradient.
