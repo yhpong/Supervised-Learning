@@ -12,7 +12,7 @@ Option Explicit
 '====================================================================================
 'Single Layer Neural Network
 '====================================================================================
-'Implemented with momentum and adaptive gain on learning rate, and max norm regularization
+'Implemented with momentum and adaptive gain on learning rate, L1, L2 and max norm regularization
 '====================================================================================
 
 Private pn_input As Long
@@ -24,20 +24,20 @@ Private pbias_h() As Double, pbias_h_chg() As Double, pbias_h_gain() As Double, 
 Private pbias_o() As Double, pbias_o_chg() As Double, pbias_o_gain() As Double, pbias_o_grad() As Double
 Private pcost_function() As Double
 
-Public Property Get w() As Double()
-    w = pw
+Public Property Get w_ih() As Double()
+    w_ih = pw_ih
 End Property
 
-Public Property Let w(x() As Double)
-    pw = x
+Public Property Let w_ih(x() As Double)
+    pw_ih = x
 End Property
 
-Public Property Get wout() As Double()
-    wout = pwout
+Public Property Get w_ho() As Double()
+    w_ho = pw_ho
 End Property
 
-Public Property Let wout(x() As Double)
-    pwout = x
+Public Property Let w_ho(x() As Double)
+    pw_ho = x
 End Property
 
 Public Property Get bias_h() As Double()
@@ -201,7 +201,8 @@ End Sub
 Sub Trainer(x() As Double, target() As Double, _
         Optional learn_rate As Double = 0.01, Optional momentum As Double = 0.5, _
         Optional mini_batch As Long = 5, _
-        Optional epoch_max As Long = 1000, Optional cost_min As Double = 0.001, _
+        Optional epoch_max As Long = 1000, Optional cost_min As Double = 0.01, _
+        Optional L1 As Double = 0, Optional L2 As Double = 0, Optional LMAX As Double = 0, _
         Optional x_validate As Variant, Optional target_validate As Variant)
 Dim i As Long, j As Long, k As Long, m As Long, n As Long, epoch As Long
 Dim n_raw As Long, batch_count As Long
@@ -209,11 +210,12 @@ Dim xn() As Double, y() As Double, x_v() As Double, tgt_v() As Double
 Dim v() As Double, u() As Double, cost_function() As Double
 Dim delta_o() As Double, delta_h() As Double
 Dim tmp_x As Double, tmp_y As Double
-Dim min_gain As Double
+Dim min_gain As Double, max_gain As Double
 Dim iArr() As Long
 
 n_raw = UBound(x, 1)
 min_gain = 0.01
+max_gain = 1 / learn_rate
 Call Init_Train
 
 '=== Pre allocate memory
@@ -226,10 +228,10 @@ ReDim cost_function(1 To epoch_max, 1 To 1)
 If IsMissing(x_validate) = False Then
     x_v = x_validate
     tgt_v = target_validate
-    ReDim cost_function(1 To epoch_max, 1 To 2)
+    ReDim cost_function(1 To epoch_max, 1 To 3)
 End If
 
-batch_count = 1
+batch_count = 0
 For epoch = 1 To epoch_max
     
     If epoch Mod 50 = 0 Then
@@ -269,7 +271,7 @@ For epoch = 1 To epoch_max
             u(k) = tmp_x + pbias_o(k)
             'Sigmoid
             'y(n, k) = 1# / (1# + Exp(-u(k)))
-            'delta_out(k) =  (y(n, k) - target(n, k)) * y(n, k) * (1 - y(n, k))
+            'delta_o(k) =  (y(n, k) - target(n, k))
         Next k
 
         'Softmax
@@ -289,18 +291,16 @@ For epoch = 1 To epoch_max
             delta_h(j) = tmp_x * v(j) * (1 - v(j))  'Derivative of Sigmoid
         Next j
         
-        If batch_count < mini_batch Then
+        Call Accumulate_Wgt_chg(delta_o, delta_h, v, xn)
         
-            Call Accumulate_Wgt_chg(delta_o, delta_h, v, xn)
-            batch_count = batch_count + 1
-            
-        ElseIf batch_count = mini_batch Or m = n_raw Then
-        
-            Call Learn_Rate_Gain(min_gain)
+        batch_count = batch_count + 1
+        If batch_count = mini_batch Or m = n_raw Then
+            If L1 > 0 Or L2 > 0 Then Call Normalize_Grad(L1, L2, batch_count)
+            Call Learn_Rate_Gain(min_gain, max_gain)
             Call wgt_update(learn_rate / batch_count, momentum)
+            If LMAX > 0 Then Call max_norm_reg(LMAX)
             Call Init_MiniBatch
-            batch_count = 1
-            
+            batch_count = 0
         End If
         '=====================================
         
@@ -308,12 +308,14 @@ For epoch = 1 To epoch_max
 
     Call Reset_MiniBatch
     
+    Call InOut(x, y)
     'cost_function(epoch,1) = eval_SSE(target, y)
     cost_function(epoch, 1) = eval_cross_entropy(target, y)
     
     If IsMissing(x_validate) = False Then
         Call InOut(x_v, y)
         cost_function(epoch, 2) = eval_cross_entropy(tgt_v, y)
+        cost_function(epoch, 3) = eval_accuracy(tgt_v, y)
     End If
     
     'Stop if cost function is small enough
@@ -327,7 +329,7 @@ For epoch = 1 To epoch_max
         cost_function = v
         Exit For
     End If
-
+    
 Next epoch
 
 pcost_function = cost_function
@@ -396,15 +398,6 @@ Dim tmp_x As Double, y() As Double
 End Function
 
 
-Private Function calc_gain(gradient As Double, prev_chg As Double, min_gain As Double) As Double
-    If Sgn(gradient) <> Sgn(prev_chg) Then
-        calc_gain = calc_gain + 0.2
-    Else
-        calc_gain = calc_gain * 0.8
-    End If
-    If calc_gain < min_gain Then calc_gain = min_gain
-End Function
-
 
 Private Sub Accumulate_Wgt_chg(delta_o() As Double, delta_h() As Double, v() As Double, x() As Double)
 Dim i As Long, j As Long, k As Long
@@ -426,25 +419,60 @@ Dim i As Long, j As Long, k As Long
 End Sub
 
 
-Private Sub Learn_Rate_Gain(min_gain As Double)
+Private Sub Learn_Rate_Gain(min_gain As Double, max_gain As Double)
 Dim i As Long, j As Long, k As Long
-
     For j = 1 To pn_hidden
-        pbias_h_gain(j) = calc_gain(pbias_h_grad(j), pbias_h_chg(j), min_gain)
+        Call calc_gain(pbias_h_gain(j), pbias_h_grad(j), pbias_h_chg(j), min_gain, max_gain)
         For i = 1 To pn_input
-            pw_ih_gain(i, j) = calc_gain(pw_ih_grad(i, j), pw_ih_chg(i, j), min_gain)
+            Call calc_gain(pw_ih_gain(i, j), pw_ih_grad(i, j), pw_ih_chg(i, j), min_gain, max_gain)
         Next i
     Next j
 
     For k = 1 To pn_output
-        pbias_o_gain(k) = calc_gain(pbias_o_grad(k), pbias_o_chg(k), min_gain)
+        Call calc_gain(pbias_o_gain(k), pbias_o_grad(k), pbias_o_chg(k), min_gain, max_gain)
         For j = 1 To pn_hidden
-            pw_ho_gain(j, k) = calc_gain(pw_ho_grad(j, k), pw_ho_chg(j, k), min_gain)
+            Call calc_gain(pw_ho_gain(j, k), pw_ho_grad(j, k), pw_ho_chg(j, k), min_gain, max_gain)
         Next j
     Next k
-    
 End Sub
 
+Private Sub calc_gain(gain As Double, gradient As Double, prev_chg As Double, min_gain As Double, max_gain As Double)
+    If Sgn(gradient) <> Sgn(prev_chg) Then
+        gain = gain * 1.1
+    Else
+        gain = gain * 0.9
+    End If
+    If gain < min_gain Then gain = min_gain
+    If gain > max_gain Then gain = max_gain
+End Sub
+
+
+Private Sub Normalize_Grad(L1 As Double, L2 As Double, batch_count As Long)
+Dim i As Long, j As Long, k As Long, m As Long, mm As Long
+Dim tmp_x As Double, tmp_y As Double
+    If L1 > 0 Then
+        tmp_x = L1 * batch_count
+        For j = 1 To pn_hidden
+            For i = 1 To pn_input
+                pw_ih_grad(i, j) = pw_ih_grad(i, j) + Sgn(pw_ih(i, j)) * tmp_x
+            Next i
+            For k = 1 To pn_output
+                pw_ho_grad(j, k) = pw_ho_grad(j, k) + Sgn(pw_ho(j, k)) * tmp_x
+            Next k
+        Next j
+    End If
+    If L2 > 0 Then
+        tmp_x = L2 * batch_count
+        For j = 1 To pn_hidden
+            For i = 1 To pn_input
+                pw_ih_grad(i, j) = pw_ih_grad(i, j) + pw_ih(i, j) * tmp_x
+            Next i
+            For k = 1 To pn_output
+                pw_ho_grad(j, k) = pw_ho_grad(j, k) + pw_ho(j, k) * tmp_x
+            Next k
+        Next j
+    End If
+End Sub
 
 Private Sub wgt_update(learn_rate As Double, momentum As Double)
 Dim i As Long, j As Long, k As Long
@@ -466,8 +494,8 @@ Dim i As Long, j As Long, k As Long
             pw_ho(j, k) = pw_ho(j, k) + pw_ho_chg(j, k)
         Next j
     Next k
-    Call max_norm_reg(3)
 End Sub
+
 
 Private Sub max_norm_reg(Optional max_norm As Double = 3)
 Dim i As Long, j As Long, k As Long
@@ -524,7 +552,28 @@ Dim n_raw As Long, n_output As Long
             eval_cross_entropy = eval_cross_entropy - target(i, k) * Log(y(i, k))
         Next k
     Next i
-    eval_cross_entropy = eval_cross_entropy / (n_raw * n_output)
+    eval_cross_entropy = eval_cross_entropy / (n_raw)
+End Function
+
+
+Private Function eval_accuracy(target() As Double, y() As Double) As Double
+Dim i As Long, k As Long
+Dim n_raw As Long, n_output As Long
+Dim ttgt() As Long, ty() As Long, class_map() As Long
+    n_raw = UBound(target, 1)
+    n_output = UBound(target, 2)
+    ReDim class_map(1 To n_output)
+    For i = 1 To n_output
+        class_map(i) = i
+    Next i
+    Call modMath.Vec2Class(target, class_map, ttgt)
+    Call modMath.Vec2Class(y, class_map, ty)
+    eval_accuracy = 0
+    For i = 1 To n_raw
+        If ttgt(i) = ty(i) Then eval_accuracy = eval_accuracy + 1
+    Next i
+    eval_accuracy = eval_accuracy / n_raw
+    Erase ttgt, ty, class_map
 End Function
 
 
