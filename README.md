@@ -127,11 +127,11 @@ Requires: [cCNN.cls](Modules/cCNN.cls), [cConvLayer.cls](Modules/cConvLayer.cls)
 
 Another very common and basic type of neural network is a convolutional nural network (CNN). It is particularly useful in classification tasks of 2-dimensional images. In this example, we will take the famous MNIST data set, which consists of 70,000 samples of hand written numeric digits from 0 to 9, in grey scale and centered in a 28x28 frame.
 
-I won't bore you with the intricacies of feeding in the data, which depends on how you obtain them for each specific task. In my implementation, the 28x28 matrix is converted into 1D-vector of length 784, with the scheme as shown below. I found that VBA read and write to vector a bit faster than directly operating on a 2D-matrix.
+I won't bore you with the intricacies of feeding in the data, which depends on how you obtain them for each specific task. In my implementation, the 28x28 matrix is converted into 1D-vector of length 784 according to the scheme shown below. I found that VBA read and write to vector a bit faster than directly operating on a 2D-matrix.
 
 ![CNN01](Screenshots/CNN01.jpg)
 
-First we will specify the architecture of our CNN, which accepts as an input a 28x28 image of single channel (for RGB image it will be 3 channels). It is then followed by a 5x5 convolutional layer of stride length 1 with 20 channels, using RELU activation. It's then followed by a 2x2 max pooling layer of stride length 2. After that we stack a fully connected layer of 100 sigmoid units. The final output layer is a fully connected softmax layer with 10 units, correspoding to the 0-9 classification task. The syntax looks like this
+First let's specify the architecture of our CNN, which accepts as an input a 28x28 image of single channel (for RGB image it will be 3 channels). It is then followed by a 5x5 convolutional layer of stride length 1 with 20 channels, using RELU activation. It's then followed by a 2x2 max pooling layer of stride length 2. After that we stack a fully connected layer of 100 sigmoid units. The final output layer is a fully connected softmax layer with 10 units, correspoding to the 0-9 classification task. The syntax looks like this
 ```
 Set CNN1 = New cCNN
 With CNN1
@@ -141,7 +141,7 @@ With CNN1
     Call .Add_Layer("FULL", 10, , , , "SOFTMAX")
 End With
 ```
-Once specified, we can start training the model. For demonstration purpose, let's train it on only 4000 images and 250 validation images and test it on another 250 images. We will use a learning rate 0.1 and momentum 0.5, and train it on mini-batch size of 10 for 10 epochs. The training inputs and training targets are saved in arrays of x_train() and array of tgt_train(). Same goes for the valiation and testing set.s
+Once specified, we can start training the model. For demonstration purpose, let's train it on only 4000 images and 250 validation images and test it on another 250 images. We will use a learning rate 0.1 and momentum 0.5, and train it with mini-batch size of 10 for 10 epochs. The training inputs and training targets are saved in arrays x_train() and tgt_train() respectively. Same goes for the valiation and testing sets.
 ```
 With CNN1
     Call .Train(x_train, tgt_train, y_train, 0.1, 0.5, 10, 10, train_cost, train_accuracy, x_valid, tgt_valid, y_valid, valid_cost, valid_accuracy)
@@ -149,11 +149,16 @@ With CNN1
     Call .Predict(x_test, y_test, tgt_test)                 'Make prediction with test data
 End With
 ```
-First let's look at the results. The left chart here is showing the predictions made on the training set, which has achieved 100% accuracy. The right hand side shows predictions made on the 250 testing images. It does made some incorrect predictions and the accuracy is 95.2%.
+First let's look at the results. The left chart here is showing the predictions made on the training set after 10 epochs, which has achieved 100% accuracy. The right hand side shows predictions made on the 250 testing images. It does made some incorrect predictions and the accuracy is 95.2%.
+
 ![CNN03](Screenshots/CNN03.jpg)
-But if we look at the some of the wrong predictions made, like the two shown below. It misclassified a 9 as 4 and a 5 as 6. I would say it's also quite difficult for a human to say what these two number are with 100% certainty.
+
+But if we look at the some of the wrong predictions it made, like the two shown below. It misclassified a 9 as 4 and a 5 as 6. I would say it's also quite difficult for a human to say what these two number are with 100% certainty.
+
 ![CNN04](Screenshots/CNN04.jpg)
-If we look at how the accuracy changed over the training cycles, we can see that the performance kept improving on the training set, but stopped improving after the fifth epoch. This could be a sign of overfitting, and we may either pick the model as of the fifth epoch, or change the architecture to achieve a better validation error. 
+
+If we look at how the accuracy changed over the training cycles, we can see that the performance kept improving on the training set, but stopped improving after the fifth epoch. This could be a sign of overfitting, and we may either pick the model as of the fifth epoch, or change the architecture to achieve a better validation error.
+
 ![CNN02](Screenshots/CNN02.jpg)
 
 
