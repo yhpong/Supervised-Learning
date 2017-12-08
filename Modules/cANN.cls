@@ -89,7 +89,7 @@ With wksht
     pn_input = .Cells(1, 1).Value
     pn_hidden = .Cells(2, 1).Value
     pn_output = .Cells(3, 1).Value
-    Call Init(.pn_input, pn_output, pn_hidden)
+    Call Init(pn_input, pn_output, pn_hidden)
     i = 3
     For j = 1 To pn_hidden
         pbias_h(j) = .Cells(i + 1, j).Value
