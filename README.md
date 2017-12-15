@@ -207,7 +207,7 @@ In the screenshot below I am showing how the prediction error varies with the de
 
 ![RForest02](Screenshots/RForest02.jpg)
 
-The discussion above is based on regression on continuous reponse, but you can easily imagine the exact same logic follows for a classification task. Syntax-wise, all we need to change is the repsonse *y* will now hold integers representing each class label. And the output error will be assessed by their classification error instead of mean squared error. When fitting a classification model, the 6th and 7th argument of `.Fit` method will be set to TRUE and the number of classes respectively
+The discussion above is based on regression on continuous reponse, but you can easily imagine the exact same logic follows for a classification task. The only difference is that model error will be assessed by their classification error instead of mean squared error. Syntax-wise, all we need to change is that repsonse *y* will now hold integers representing each class label.  The 6th and 7th argument of `.Fit` method will be set to TRUE and the number of classes respectively
 ```
 Call RF1.Fit(y,x,,,,TRUE,3,"LOG",oob_err,oob_output)   'Classification task with 3 possible outcomes
 ```
