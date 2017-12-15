@@ -173,3 +173,34 @@ To calculate gradient of the loss function with respect to weights at the *k*-th
 ![Eq2](Screenshots/BackProp_Eq2.jpg)
 
 To put in words, gradient of weight *w<sub>ji</sub>* is equal to its input multiplied by the delta at the exiting node. And delta at node *i* of the *k*-th layer is given by weighted sum of deltas from connected nodes in the next layer, modulated by its own gradient.
+
+
+## Decision Tree and Random Forests Regression/Classification
+
+Requires: [cRForest.cls](Modules/cRForest.cls), [cCART.cls](Modules/cCART.cls), [modMath.bas](../../../Scientific-Toolkit/blob/master/Modules/modMath.bas)
+
+Decision tree regression is very simple in idea. We want to predict a response *y* given a multi-dimensional feature vector ***x***. To do that, we construct a binary tree where each non-leaf node contains two information: splitting dimension *k* and a corresponding splitting value *v<sub>k</sub>*. To make a prediction given ***x***, we traverse down the tree, starting from the root. At each node, if the splitting dimension of ***x*** is smaller than its splitting value, i.e. *x<sub>k</sub> < v<sub>k</sub>*, we proceed to the left child, otherwise we head right. This repeats until we hit a leaf node where there is no further split, and the node contains a value of the reponse variable, which will be taken as our prediction.
+
+It follows that if a tree is of depth 1, i.e. it only has 3 nodes: root, left child and right child, then only two responses are possible. For a tree of depth *D*, the number of possible outcomes grows exponentially as 2<sup>D</sup>. This is illustrated in the example below where a 1-dimension problem is fitted to decision trees of different depths. When depth=1, it simply fits two levels to the reponse value. When depth=4, 16 levels are allowed etc. As the depth increases, an almost exact fit to the signal can be produced. To avoid overfitting, we can stop splitting a note as it reaches a maximum depth, or when its contains only a minimum size of training samples.
+
+![RForest00](Screenshots/RForest00.jpg)
+
+Random forest regression takes the same idea futher. Instead of using only one decision tree, we build multiple trees to form a forest. To make a prediction, we simply take prediction from each individual tree and average their outputs. The reason that it's called "random" is because when buidling each single tree, we use randomly drawn training samples from the full training set, so each of them grows differently. Another element of randomness is that during the traing process, at each non-leaf node, we only consider a random subset of features when deciding which dimension to split. This way we end up having an ensemble of trees with each tree making slightly different prediction. Empirically this has proven to improve generalization.
+
+We illustrate the syntax with diabetes data that can be found here. It consists of *N*=442 observations of diabetes reponse, and *D*=10 predicting variables. To begin we take *N<sub>1</sub>*=352 samples as training set. Simply store the response variable in a vector of *y(1:N<sub>1</sub>)* and the predictors in an array *x(1:N<sub>1</sub>,1:D)*. The remaining samples are reserved as testing set and stored in an array *x_out*.  We can then fit a random forest on the training set, and make prediction on testing set using the following syntax:
+
+```
+Dim RF1 As cRForest
+Set RF1 = New cRForest
+With RF1
+    'fit y with x using forest with 100 trees of maximum depth of 12 and constraint leaf node at a minimum size of 5
+    Call .Fit(y, x, 100, 5, 12, False, 0, "LOG", oob_err, oob_output)   
+    Call .Predict(x_test, y_out)  'predict response from x_test() and store the output in y_out()
+    Call .Print_Model(wkshtRng)   'save forest to an Excel range specified by a single cell
+    Call .Read_Model(wkshtRng)    'Read forest from an Excel range specified by a single cell
+End With
+```
+
+In the screenshot below I am showing how the prediction error varies with the depth of each tree and number of trees in a forest. On the left, we keep everything else fixed but vary the allowable depth of each tree. It's easily seen that as a tree grows deeper, it learns all the minute detail of the training samples. In fact it's possible to get zero error by simply growing the tree deep enough so each training sample occupy one leaf node. The generalization error (testing and out-of-bag) however stops improving once it becomes too deep, which means the tree has overfit. On the other hand, if we keep the depth fixed but increase number of trees in our forest, both training and generalization errors improve with more trees, but as we add more trees the improvment becomes less and less significant.
+
+![RForest02](Screenshots/RForest02.jpg)
