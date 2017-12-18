@@ -157,7 +157,7 @@ But if we look at the some of the wrong predictions it made, like the two shown 
 
 ![CNN04](Screenshots/CNN04.jpg)
 
-If we look at how the accuracy changed over the training cycles, we can see that the performance kept improving on the training set, but stopped improving after the fifth epoch. This could be a sign of overfitting, and we may either pick the model as of the fifth epoch, or change the architecture to achieve a better validation error.
+If we look at how the accuracy changed over the training cycles, we can see that the performance kept improving on the training set, but stopped improving on the validation set after the fifth epoch. This could be a sign of overfitting, and we may either pick the model as of the fifth epoch, or change the architecture to achieve a better validation error.
 
 ![CNN02](Screenshots/CNN02.jpg)
 
