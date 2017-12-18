@@ -14,17 +14,121 @@ Private pSplit_Dim As Long, pSplit_Val As Double
 Private pisLeaf As Boolean, pResponse As Double
 Private Const pINFINITY As Double = 2E+30
 
-Sub Print_Model(vRng As Range)
-Dim vArr As Variant
-    Call prv_Build_Array(vArr, 1)
-    Call Compress_Array(vArr)
+
+'Output data to excel range that can be plot as a tree using scatter plots
+Sub Chart_Tree(vRng As Range, Optional factor_labels As Variant)
+Dim i As Long
+Dim labels() As String
+Dim vArr As Variant, uArr As Variant, iArr() As Long
+    If IsMissing(factor_labels) = False Then
+        labels = factor_labels
+    Else
+        ReDim labels(1 To 999)
+        For i = 1 To 999
+            labels(i) = VBA.Format(i, "000")
+        Next i
+    End If
+    Call prv_chart_array(vArr, labels, 0, 0, 1, -1)
+    Call prv_fill_pos(vArr, iArr, 1)
+    Call prv_draw_lines(vArr, uArr)
     With vRng
-        .Value = UBound(vArr, 1)
-        .Offset(1, 0).Resize(UBound(vArr, 1), UBound(vArr, 2)).Value = vArr
+        .Resize(UBound(vArr, 2), 3).Value = Application.WorksheetFunction.Transpose(vArr)
+        .Offset(0, 4).Resize(UBound(uArr, 2), UBound(uArr, 1)).Value = Application.WorksheetFunction.Transpose(uArr)
+    End With
+    Erase iArr, uArr, vArr
+End Sub
+
+
+'Convert binary tree to array representation, set y-positions of all nodes and x-positions of leafs
+Function prv_chart_array(vArr As Variant, labels() As String, i_pos As Long, depth As Long, leaf_order As Long, Optional i_parent As Long = -1) As Long
+Dim i As Long, j As Long, k As Long, tmp_x As Double
+    If i_pos = 0 Then
+        i_pos = 1
+        ReDim vArr(1 To 6, 1 To 1)
+    Else
+        i_pos = UBound(vArr, 2) + 1
+        ReDim Preserve vArr(1 To 6, 1 To i_pos)
+    End If
+    vArr(3, i_pos) = -depth
+    vArr(6, i_pos) = i_parent
+    prv_chart_array = i_pos
+    k = i_pos
+    If pisLeaf = False Then
+        vArr(1, i_pos) = labels(pSplit_Dim) & "<" & VBA.Format(pSplit_Val, "0.0")
+        vArr(4, k) = pChild_L.prv_chart_array(vArr, labels, i_pos, depth + 1, leaf_order, k)
+        vArr(5, k) = pChild_R.prv_chart_array(vArr, labels, i_pos, depth + 1, leaf_order, k)
+    Else
+        vArr(1, k) = "ret " & VBA.Format(pResponse, "0.0")
+        vArr(2, k) = leaf_order
+        vArr(4, k) = -1
+        vArr(5, k) = -1
+        leaf_order = leaf_order + 1
+    End If
+End Function
+
+'Set x-positions of all nodes to be average of their left & right child
+Private Sub prv_fill_pos(vArr As Variant, isFix() As Long, Optional i_pos As Long = 1)
+Dim i As Long, j As Long, tmp_x As Double
+    If i_pos = 1 Then ReDim isFix(1 To UBound(vArr, 2))
+    If vArr(4, i_pos) = -1 Then
+        tmp_x = vArr(2, i_pos)
+        j = i_pos
+        Do
+            j = vArr(6, j)
+            If isFix(j) < 2 Then
+                vArr(2, j) = vArr(2, j) + tmp_x / 2
+                isFix(j) = isFix(j) + 1
+            End If
+            If isFix(j) < 2 Then Exit Do
+            tmp_x = vArr(2, j)
+        Loop While j > 1
+    Else
+        i = vArr(4, i_pos)
+        j = vArr(5, i_pos)
+        Call prv_fill_pos(vArr, isFix, i)
+        Call prv_fill_pos(vArr, isFix, j)
+    End If
+End Sub
+
+'Draw connecting lines in tree
+Private Sub prv_draw_lines(vArr As Variant, uArr As Variant, Optional i_pos As Long = 1)
+Dim i As Long, j As Long, k As Long
+    If i_pos = 1 Then
+        k = 1
+        ReDim uArr(1 To 2, 1 To 1)
+    Else
+        k = UBound(uArr, 2) + 1
+        ReDim Preserve uArr(1 To 2, 1 To k)
+    End If
+    uArr(1, k) = vArr(2, i_pos)
+    uArr(2, k) = vArr(3, i_pos)
+    If vArr(4, i_pos) <> -1 Then
+        i = vArr(4, i_pos)
+        Call prv_draw_lines(vArr, uArr, i)
+        
+        k = UBound(uArr, 2) + 2
+        ReDim Preserve uArr(1 To 2, 1 To k)
+        uArr(1, k) = vArr(2, i_pos)
+        uArr(2, k) = vArr(3, i_pos)
+        
+        j = vArr(5, i_pos)
+        Call prv_draw_lines(vArr, uArr, j)
+    End If
+End Sub
+
+'Print model to excel range using array representation
+Sub Print_Model(vRng As Range)
+Dim i As Long
+Dim vArr As Variant
+    i = prv_Build_Array(vArr, 0)
+    With vRng
+        .Value = UBound(vArr, 2)
+        .Offset(1, 0).Resize(UBound(vArr, 2), UBound(vArr, 1)).Value = Application.WorksheetFunction.Transpose(vArr)
     End With
     Erase vArr
 End Sub
 
+'Read model from excel range
 Sub Read_Model(vRng As Range)
 Dim n As Long
 Dim vArr As Variant
@@ -55,54 +159,31 @@ Dim dTL As cCART, dTR As cCART
 End Sub
 
 'Convert binary tree to array representation
-Sub prv_Build_Array(vArr As Variant, Optional i_pos As Long = 1)
-    If i_pos = 1 Then ReDim vArr(1 To 2, 1 To i_pos)
+Function prv_Build_Array(vArr As Variant, Optional i_pos As Long = 0) As Long
+Dim k As Long
+    If i_pos = 0 Then
+        i_pos = 1
+        ReDim vArr(1 To 4, 1 To 1)
+    Else
+        i_pos = UBound(vArr, 2) + 1
+        ReDim Preserve vArr(1 To 4, 1 To i_pos)
+    End If
+    prv_Build_Array = i_pos
+    k = i_pos
     If pisLeaf = False Then
         vArr(1, i_pos) = pSplit_Dim
         vArr(2, i_pos) = pSplit_Val
+        vArr(3, k) = pChild_L.prv_Build_Array(vArr, i_pos)
+        vArr(4, k) = pChild_R.prv_Build_Array(vArr, i_pos)
     Else
         vArr(1, i_pos) = -1
         vArr(2, i_pos) = pResponse
+        vArr(3, i_pos) = -1
+        vArr(4, i_pos) = -1
     End If
-    If pisLeaf = False Then
-        If UBound(vArr, 2) < (2 * i_pos + 1) Then ReDim Preserve vArr(1 To 2, 1 To (2 * i_pos + 1))
-        Call pChild_L.prv_Build_Array(vArr, 2 * i_pos)
-        Call pChild_R.prv_Build_Array(vArr, 2 * i_pos + 1)
-    End If
-End Sub
+End Function
 
-
-'Remove un-used address in binary heap, add integer pointer to child address
-Private Sub Compress_Array(vArr As Variant)
-Dim i As Long, j As Long, k As Long, n As Long, nn As Long
-Dim iArr() As Long, uArr As Variant
-    n = UBound(vArr, 2)
-    ReDim iArr(1 To n)
-    nn = 0
-    For i = 1 To n
-        If Not IsEmpty(vArr(1, i)) Then
-            nn = nn + 1
-            iArr(i) = nn 'move row i to row nn
-        End If
-    Next i
-    ReDim uArr(1 To nn, 1 To 4)
-    For i = 1 To n
-        j = iArr(i)
-        If vArr(1, i) > 0 Then
-            uArr(j, 1) = vArr(1, i)
-            uArr(j, 2) = vArr(2, i)
-            uArr(j, 3) = iArr(2 * i)
-            uArr(j, 4) = iArr(2 * i + 1)
-        ElseIf vArr(1, i) = -1 Then
-            uArr(j, 1) = vArr(1, i)
-            uArr(j, 2) = vArr(2, i)
-        End If
-    Next i
-    vArr = uArr
-    Erase uArr, iArr
-End Sub
-
-
+'Make predictions y(1:N) from inputs x(1:N,1:D)
 Sub Predict(x As Variant, y As Variant)
 Dim i As Long, j As Long, n As Long, n_dimension As Long
 Dim xi As Variant, yi As Variant
@@ -120,7 +201,7 @@ Dim xi As Variant, yi As Variant
     Erase xi
 End Sub
 
-
+'Make prediction y from input x(1:D)
 Sub Predict_Single(x As Variant, y As Variant)
     If pisLeaf = True Then
         y = pResponse
@@ -133,6 +214,7 @@ Sub Predict_Single(x As Variant, y As Variant)
     End If
 End Sub
 
+'Grow tree from training data with response y(1:N) and explanatory variables x(1:N,1:D)
 Sub Fit(y As Variant, x As Variant, _
     Optional min_size As Long = 1, Optional max_depth As Long = 20, _
     Optional y_categorical As Boolean = False, Optional n_class As Long = 0, _

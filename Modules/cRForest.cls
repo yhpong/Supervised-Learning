@@ -12,6 +12,24 @@ Option Explicit
 Private pn_tree As Long             'number of trees in forest
 Private puseVote As Boolean         'use ensemble vote if output is categorical
 Private pTrees As Collection        'collection of trees
+Private pbest_tree As Long          'index of the tree that best fit training set
+
+'Print a single tree from forest, if i is not specified then best-fitting tree is printed
+Sub Print_Tree(vRng As Range, Optional factor_labels As Variant, Optional i As Long = -1)
+Dim dT1 As cCART
+    If i > 0 And i <= pn_tree Then
+        Set dT1 = pTrees(i)
+    ElseIf pbest_tree > 0 Then
+        Set dT1 = pTrees(pbest_tree)
+    Else
+        Set dT1 = pTrees(1)
+    End If
+    If IsMissing(factor_labels) = False Then
+        Call dT1.Chart_Tree(vRng, factor_labels)
+    Else
+        Call dT1.Chart_Tree(vRng)
+    End If
+End Sub
 
 'Save model to excel range
 Sub Print_Model(vRng As Range)
@@ -20,18 +38,20 @@ Dim dT1 As cCART
     i = 0
     vRng.Value = pTrees.Count
     vRng.Offset(0, 1).Value = puseVote
+    vRng.Offset(0, 2).Value = pbest_tree
     For Each dT1 In pTrees
         i = i + 1
         Call dT1.Print_Model(vRng.Offset(1, (i - 1) * 4))
     Next dT1
 End Sub
 
-'Read model to excel range
+'Read model from excel range
 Sub Read_Model(vRng As Range)
 Dim i As Long
 Dim dT1 As cCART
     pn_tree = vRng.Value
     puseVote = vRng.Offset(0, 1).Value
+    pbest_tree = vRng.Offset(0, 2).Value
     Set pTrees = New Collection
     For i = 1 To pn_tree
         Set dT1 = New cCART
@@ -109,6 +129,7 @@ Sub Fit(y As Variant, x As Variant, n_tree As Long, _
     Optional oob_err As Variant, Optional oob_output As Variant)
 Dim i As Long, j As Long, k As Long, n As Long, n_oob As Long, iterate As Long
 Dim dT1 As cCART
+Dim tmp_x As Double, best_err As Double
 Dim y1 As Variant, x1 As Variant
 Dim x_tmp As Variant, y_oob As Variant
 Dim oob_list() As Long, oob_count() As Long, class_vote() As Long
@@ -194,10 +215,45 @@ Dim boolTestOOB As Boolean
             End If
         Next i
     End If
-    
     Erase x1, y1
+    
+    'Identify tree that best fits training data
+    pbest_tree = -1
+    best_err = Exp(70)
+    For i = 1 To pTrees.Count
+        If i Mod 10 = 0 Then
+            DoEvents
+            Application.StatusBar = "cRForest: Fit: Find best fitting tree" & iterate & "/" & pn_tree
+        End If
+        Set dT1 = pTrees(i)
+        Call dT1.Predict(x, y1)
+        tmp_x = Calc_Err(y1, y, y_categorical)
+        If tmp_x < best_err Then
+            best_err = tmp_x
+            pbest_tree = i
+        End If
+    Next i
+    
     Application.StatusBar = False
 End Sub
+
+
+Function Calc_Err(y_out As Variant, y_tgt As Variant, Optional y_categorical As Boolean = False)
+Dim i As Long, n As Long
+Dim tmp_x As Double
+    tmp_x = 0
+    n = UBound(y_out, 1)
+    If y_categorical = False Then
+        For i = 1 To n
+            tmp_x = tmp_x + (y_out(i) - y_tgt(i)) ^ 2
+        Next i
+    Else
+        For i = 1 To n
+            If y_out(i) <> y_tgt(i) Then tmp_x = tmp_x + 1
+        Next i
+    End If
+    Calc_Err = tmp_x / n
+End Function
 
 
 Private Sub Resampling(y As Variant, x As Variant, y1 As Variant, x1 As Variant, _
